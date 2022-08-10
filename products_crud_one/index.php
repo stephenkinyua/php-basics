@@ -3,7 +3,15 @@
 $pdo = new PDO('mysql:host=localhost;port=3306;dbname=products_crud', 'root', 'testing321');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$statement = $pdo->prepare('SELECT * FROM products ORDER BY created_at DESC');
+$search = $_GET['search'] ?? '';
+
+if ($search) {
+    $statement = $pdo->prepare("SELECT * FROM products WHERE title LIKE :search ORDER BY created_at DESC");
+    $statement->bindValue(':search', "%$search%");
+} else {
+    $statement = $pdo->prepare('SELECT * FROM products ORDER BY created_at DESC');
+}
+
 $statement->execute();
 $products = $statement->fetchAll(PDO::FETCH_ASSOC);
 
@@ -22,8 +30,17 @@ $products = $statement->fetchAll(PDO::FETCH_ASSOC);
     <div class="container">
         <div class="my-4">
             <h1>Products CRUD</h1>
-            <a href='create.php' class="btn btn-primary">Edit</a>
+            <a href='create.php' class="btn btn-link">Create Product</a>
         </div>
+
+        <!-- Search Section -->
+        <form method='GET' action="">
+            <div class="input-group mb-3">
+                <input value='<?php echo $search ?>' type="text" class="form-control" placeholder="Search" aria-label="Search" name='search'  aria-describedby="button">
+                <button class="btn btn-secondary" type="submit">Search</button>
+            </div>
+        </form>
+
         <table class="table">
             <thead>
                 <tr>
@@ -38,15 +55,20 @@ $products = $statement->fetchAll(PDO::FETCH_ASSOC);
             </thead>
             <tbody>
                 <?php foreach ($products as $i => $product): ?>
-                <tr>
+                <tr >
                     <th scope="row"><?php echo $i + 1 ?></th>
-                    <td><?php ?></td>
+                    <td>
+                        <img style="height: 40px;" class='thmb-image' src='<?php echo $product['image'] ?>' alt='Product image' />
+                    </td>
                     <td><?php echo $product['title'] ?></td>
                     <td><?php echo $product['price'] ?></td>
                     <td><?php echo $product['created_at'] ?></td>
                     <td>
-                        <a class="btn btn-primary">Edit</a>
-                        <a class="btn btn-danger">Delete</a>
+                        <a href="update.php?id=<?php echo $product['id'] ?>" class="btn btn-sm btn-primary">Edit</a>
+                        <form class="d-inline" method='POST' action='delete.php'>
+                            <input name='id' type="hidden" value="<?php echo $product['id'] ?>" />
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>

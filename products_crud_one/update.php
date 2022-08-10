@@ -3,18 +3,29 @@
 $pdo = new PDO('mysql:host=localhost;port=3306;dbname=products_crud', 'root', 'testing321');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$id = $_GET['id'] ?? null;
+
+if (!$id) {
+  header('Location: index.php');
+  exit;
+}
+
+$statement = $pdo->prepare("SELECT * FROM products WHERE id = :id");
+$statement->bindValue(':id', $id);
+$statement->execute();
+$product = $statement->fetch(PDO::FETCH_ASSOC);
+
 $errors = [];
-$title = '';
-$price = '';
-$description = '';
+
+$title = $product['title'];
+$description = $product['description'];
+$price = $product['price'];
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST'){
-  # Super globals
   $title = $_POST['title'];
   $price = $_POST['price'];
   $description = $_POST['description'];
-  $date = date('Y-m-d H:i:s');
 
   if (!$title) {
     $errors[] = 'Product title is required.';
@@ -30,24 +41,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'){
 
   if (empty($errors)) {
     $image = $_FILES['image'] ?? null;
-    $image_path = '';
+    $image_path = $product['image'];
 
     if ($image && $image['tmp_name']) {
-      $image_path = 'images/'.random_string(8).'/'.$image['name'];
+        if ($product['image']) {
+            unlink($product['image']);
+        }
 
-      mkdir(dirname($image_path));
-      move_uploaded_file($image['tmp_name'], $image_path);
+        $image_path = 'images/'.random_string(8).'/'.$image['name'];
+
+        mkdir(dirname($image_path));
+        move_uploaded_file($image['tmp_name'], $image_path);
+        echo $image_path;
     }
 
     $statement = $pdo->prepare(
-      "INSERT INTO products (title, image, description, price, created_at)
-        VALUES (:title, :image, :description, :price, :date)"
+      "UPDATE products SET title = :title, 
+        image = :image, 
+        description = :description, 
+        price = :price WHERE id = :id"
     );
     $statement -> bindValue(':title', $title);
     $statement -> bindValue(':description', $description);
     $statement -> bindValue(':price', $price);
     $statement -> bindValue(':image', $image_path);
-    $statement -> bindValue(':date', $date);
+    $statement -> bindValue(':id', $id);
 
     $statement -> execute();
     header('Location: index.php');
@@ -74,12 +92,12 @@ function random_string($n) {
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
-    <title>Create New Product</title>
+    <title>Update Product</title>
 </head>
 <body>
     <div class="container">
         <div class="my-4">
-            <h1>Create New Product</h1>
+            <h1>Update Product</h1>
             <a href='index.php' class="btn btn-link">Home</a>
         </div>
 
@@ -92,10 +110,14 @@ function random_string($n) {
         <?php endif; ?>
 
         <form action='' enctype="multipart/form-data" method='POST'>
+            <?php if ($product['image']): ?>
+                <img style="height: 50px;" class='thmb-image' src='<?php echo $product['image'] ?>' alt='Product image' />
+            <?php endif; ?>
+
             <div class="mb-3">
                 <label for="image" class="form-label">Product Image</label>
                 <input type="file" class="" name='image' id="image">
-            </div>
+            </div>    
 
             <div class="mb-3">
                 <label for="title" class="form-label">Product Title</label>
